@@ -1,0 +1,50 @@
+# Kuku Promo Finder configuration.
+# Swap any model by changing one line. Any LiteLLM model id works:
+#   gemini/..., groq/..., openai/..., anthropic/..., ollama/...
+# Use "heuristic" to run fully offline with rule-based stand-ins (no API key needed).
+
+models:
+  generator: gemini/gemini-3.5-flash-lite   # finds promo candidates in each episode
+  judge: groq/openai/gpt-oss-120b           # cold viewer, 3-second test, suspense, ad risk (open-weight, different family)
+  # Tried in order when the primary fails or its free daily quota runs out (separate quotas per model):
+  generator_fallbacks: [groq/openai/gpt-oss-120b, gemini/gemini-2.5-flash]  # 2.5-flash: closed to new keys, kept so its cached answers are reused
+  judge_fallbacks: [groq/qwen/qwen3.8-27b, gemini/gemini-3.5-flash-lite]
+  temperature: 0.4
+  reasoning_effort: low                     # model "thinking": low = ~3x faster than default
+
+local_models:
+  embeddings: BAAI/bge-small-en-v1.5
+  emotion: j-hartmann/emotion-english-distilroberta-base
+
+rate_limits_rpm:          # free-tier safe request rates per provider
+  gemini: 9
+  groq: 20
+  default: 20
+
+promo:
+  min_sec: 20
+  max_sec: 60
+  hook_within_sec: 3.0
+  max_segments: 3
+  candidates_per_episode: 4
+
+heartbeat:
+  peaks_per_episode: 4
+  min_peak_gap_sec: 20
+
+judge:
+  batch_size: 5
+
+rank:
+  top_n: 25
+  mmr_lambda: 0.75
+  weights:
+    hook: 0.25          # 3-second test score
+    cliffhanger: 0.20   # judge: ending unresolved
+    suspense: 0.15      # entropy of "what happens next" guesses
+    standalone: 0.20    # cold viewer understood it
+    heartbeat: 0.10     # drama intensity in the first 3 seconds
+    early_episode: 0.10 # lands new viewers near episode 1
+    ad_risk: -0.15      # likely ad-policy rejection (violence, etc.)
+
+cache_dir: .cache

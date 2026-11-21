@@ -1,0 +1,22 @@
+# Confidential Kuku scripts and anything derived from them never go to Git.
+data/
+outputs/
+.cache/
+.env
+eval/gold_promos.csv
+server/runs.db
+__pycache__/
+*.pyc
+web/node_modules/
+web/dist/
+.pytest_cache/
+.venv/
+build/
+
+# Submission material that quotes the confidential scripts: shared privately, never in the public repo
+docs/solution_doc*
+docs/*.pdf
+docs/video*
+docs/*.html
+media/
+outputs/baseline.log

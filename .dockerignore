@@ -1,0 +1,10 @@
+.venv
+.cache
+.env
+data
+outputs
+eval/gold_promos.csv
+web/node_modules
+web/dist
+**/__pycache__
+.git
