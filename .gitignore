@@ -20,3 +20,4 @@ docs/video*
 docs/*.html
 media/
 outputs/baseline.log
+submission/
