@@ -102,3 +102,23 @@ def test_parse_all_kuku_blocks():
         raw = next(folder.rglob(e.file)).read_text(encoding="utf-8")
         assert len(re.findall(r"^\*\*.+\*\*\s*$", raw, re.M)) == len(e.lines)
         assert all(l.end >= l.start for l in e.lines)
+
+
+def test_short_clip_grows_into_setup_not_past_cliffhanger(ep):
+    """A clip that is too short gets its start pulled earlier (hook stays within 3 s), never its end past the cliffhanger."""
+    cfg = load_config()
+    cfg["promo"]["min_sec"] = 5.0
+    clip, why = Snapper(ep, cfg).build({"segments": [{"start": "00:02.50", "end": "00:05.00"}],
+                                        "hook_line": "You lied to me!", "cliffhanger_line": "She slaps him."})
+    assert clip is not None, why
+    assert clip["segments"][0]["end"] == 5.0          # still ends on the cliffhanger line
+    assert clip["segments"][0]["start"] == 0.0        # grew backwards; hook (2.5 s) is still within 3 s
+    assert clip["hook_at"] <= cfg["promo"]["hook_within_sec"]
+    assert "start moved earlier into the setup" in clip["flags"]
+
+
+def test_short_clip_rejected_rather_than_stretched(ep):
+    cfg = load_config()
+    clip, why = Snapper(ep, cfg).build({"segments": [{"start": "00:30.00", "end": "00:33.00"}],
+                                        "hook_line": "Then who is the father?", "cliffhanger_line": "Then who is the father?"})
+    assert clip is None and "too short" in why

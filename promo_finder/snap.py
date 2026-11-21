@@ -22,10 +22,10 @@ def _norm(t: str) -> str:
     return re.sub(r"[^a-z0-9 ]", "", t.lower())
 
 
-def find_line(lines: list[Line], text: str, lo: float, hi: float) -> Line | None:
+def find_line(lines: list[Line], text: str, lo: float, hi: float, allow_camera: bool = False) -> Line | None:
     """Best fuzzy match for `text` among dialogue/action/sfx lines inside [lo, hi]."""
     # The LLM sometimes quotes a CAMERA line as the hook ("CAMERA: Close-up of ..."); allow those only then.
-    camera_ok = text.strip().upper().startswith("CAMERA")
+    camera_ok = allow_camera or text.strip().upper().startswith("CAMERA")
     target = _norm(re.sub(r"^\s*(CAMERA|ACTION|SFX|SOUND FX)\s*:\s*", "", text, flags=re.I))
     if not target:
         return None
@@ -86,7 +86,7 @@ class Snapper:
             hook = find_line(self.ep.lines, cand.get("hook_line", ""), merged[0][0] - 10, merged[-1][1])
         if hook is not None:
             if hook.start - merged[0][0] > self.cfg["hook_within_sec"] or hook.start < merged[0][0]:
-                new_start = self.snap_start(hook.start)
+                new_start = hook.start  # a line start is already a clean cut; snapping could land just after it
                 if new_start < merged[0][1]:
                     merged[0][0] = new_start
                     flags.append("start moved to hook")
@@ -107,14 +107,26 @@ class Snapper:
 
         dur = sum(b - a for a, b in merged)
         if dur < self.cfg["min_sec"]:
+            # Too short. Never stretch past the cliffhanger: the ending is the point of the promo.
+            # 1) Pull the start earlier into the setup, but only as far as keeps the hook within the first 3 s.
             need = self.cfg["min_sec"] - dur
-            # +0.35 so the snap tolerance (0.3s) can't land just under the minimum
-            new_end = self.snap_end(min(merged[-1][1] + need + 0.35, self.ep.duration))
-            merged[-1][1] = new_end
+            cur = merged[0][0]
+            earliest = (hook.start - self.cfg["hook_within_sec"]) if hook is not None else cur - need - 1.0
+            options = [s for s in self.starts if earliest - 1e-6 <= s < cur]
+            enough = [s for s in options if cur - s >= need]
+            if options:
+                merged[0][0] = max(enough) if enough else min(options)
+                flags.append("start moved earlier into the setup")
             dur = sum(b - a for a, b in merged)
-            flags.append("end extended to reach minimum length")
+            # 2) Only when there is no cliffhanger line to protect may the end move later.
+            if dur < self.cfg["min_sec"] and cliff is None:
+                need = self.cfg["min_sec"] - dur
+                # +0.35 so the snap tolerance (0.3s) can't land just under the minimum
+                merged[-1][1] = self.snap_end(min(merged[-1][1] + need + 0.35, self.ep.duration))
+                dur = sum(b - a for a, b in merged)
+                flags.append("end extended to reach minimum length")
             if dur < self.cfg["min_sec"]:
-                return None, f"too short ({dur:.1f}s)"
+                return None, f"too short ({dur:.1f}s) without cutting past the cliffhanger"
         if dur > self.cfg["max_sec"]:
             return None, f"too long ({dur:.1f}s)"
 

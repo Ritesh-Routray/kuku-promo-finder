@@ -79,6 +79,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", default="http://localhost:8090/")
     ap.add_argument("--out", default="media/promo_finder_demo.mp4")
+    ap.add_argument("--flagged", default="e038_1", help="id of a flagged promo to show as the honest failure")
     a = ap.parse_args()
     code = os.getenv("ACCESS_CODE", "")
     out = ROOT / a.out
@@ -132,7 +133,7 @@ def main() -> None:
 
         # 3. A flagged pick (honest failure)
         t.mark("A flagged pick: why it needs a human look")
-        t.go("#/promo/e011_1", 2)
+        t.go(f"#/promo/{a.flagged}", 2)
         t.scroll(600); t.wait(1)
         t.click_el(page.locator(".tab", has_text="Why it works"), 1)
         t.scroll(400); t.wait(5)
