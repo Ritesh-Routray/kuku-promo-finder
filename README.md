@@ -67,6 +67,13 @@ re-runs are free.
 
 `eval/gold_promos.example.csv` shows the format for your own hand-picked promos.
 
+## Known limits
+
+- The AI tends to propose clips shorter than 20 s. Those that can't grow into their setup without breaking the 3-second hook are rejected (never stretched past the cliffhanger), so the pool to rank from is small.
+- If the AI paraphrases a hook instead of quoting it, the 3-second rule can't be checked; these are flagged "hook line not found".
+- The cold-viewer judge is lenient, and its probabilities are flat, so the ranking blends several signals instead of trusting one score.
+- It reads text only: a purely visual hook is missed unless the script describes it.
+
 ## Project layout
 
 ```
